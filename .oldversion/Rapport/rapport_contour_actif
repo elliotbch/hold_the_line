@@ -1,0 +1,11 @@
+Methode des contours actifs :
+
+Le but est de former un enchainement de points sur l'objet pour ensuite pouvoir se rapprocher au maximum des contours 
+
+ L'idée de cette méthode est de déplacer les points pour les rapprocher des zones de fort gradient tout en conservant des caractéristiques comme la courbure du contour ou la répartition des points sur le contour ou d'autres contraintes liées à la disposition des points. Au démarrage de l'algorithme, le contour est disposé uniformément autour de l'objet à détourer puis il va se rétracter pour en épouser au mieux les formes.À chaque itération, l'algorithme va tenter de trouver un meilleur positionnement pour le contour pour minimiser les dérives par rapport aux contraintes utilisées. L'algorithme s'arrêtera lorsqu'il ne sera plus possible d'améliorer le positionnement ou simplement quand le nombre maximum d'itérations aura été atteint.
+
+Algorithme :
+
+Tout d'abord l'image est charge en noir et blanc, ensuite une fonction permet de selectionner les premiers points pour faire un contour.
+Ensuite une autree fonction subdivise chacun des points. C'est-a-dire qu'elle rajoute des points entre chaque segment.
+
