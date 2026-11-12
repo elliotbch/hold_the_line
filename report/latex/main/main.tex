@@ -1,0 +1,151 @@
+\documentclass{article}
+\usepackage{graphicx}
+\graphicspath{ {./image/} }
+\begin{document}
+
+\begin{center}
+\textbf{Semester project report on: "Hold The Line"}\\
+\vspace{5mm}
+Submitted by:\\
+Team A – Group 3:\\
+Elliot Bouchy, Gaëtan Plisson,\\ 
+Maxime Belpois, Lina Chiadmi, Meriem Driss\\
+\vspace{5mm}
+Under the guidance of:\\
+Mr Raphaël Troncy\\
+\vspace{5mm}
+2022/09/19- 2023/01/27\\
+
+
+
+    
+
+
+
+
+
+\includegraphics[scale=0.5]{eurecom}
+
+
+
+
+
+\end{center}
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+
+\section{Introduction}
+This semester project is about developing a system capable of guiding a visually impaired person through an obstacle course. Our main goal is to make visually impaired people feel free and independent in their daily life and in the practice of some sports.
+To do so, we have three elements: a Raspberry Pi, a camera and headphones. It is a multidisciplinary project as it requires many soft and hard skills. It allows us to practice the courses seen in class (image processing, sound processing, programming in Matlab, project management) and develop some soft skills (teamwork, working with deadlines, explaining our work in a pedagogic way, follow specifications).
+We work in a team of five and had 2 sessions of 4 hours per week dedicated to the project.We had the opportunity to attend coaching sessions and seminars that made us stick well with our objectives and check our progress.
+
+\section{Different approaches}
+\subsection{Active outline Model}
+Active contours, also known as snakes, is a method for image segmentation that involves the evolution of a curve to minimize an energy function. The curve is initialized at a user-specified position and then evolves to minimize the energy functional over time. The curve is typically represented as a series of discrete points, and the energy functional considers factors such as the smoothness of the curve. The proximity is evolved iteratively using an optimization algorithm, such as gradient descent, until the energy functional reaches a minimum value. The final curve is then used to segment the image by identifying all of the pixels within the curve.  
+The energy functional typically consists of two terms: an internal energy term that penalizes deviations of the curve from its initial shape, and an external energy term that penalizes deviations of the curve from the object boundary. The external energy term is usually based on the image’s gradient, which provides a measure of how well the curve fits the object’s boundary.
+\begin{center}
+\includegraphics[scale=0.2]{main/mew.png}
+\end{center}
+
+
+
+
+\subsection{Middle edge model}
+The algorithm consists of three parts. 
+First part is Image processing. We compress the image to reduce its data redundancy, then we sharpened it in order to enhance the definition of edges. Last, we smooth the image to reduce and suppress its noise.
+Second part is Drawing the line. We start by doing an edge detection technique that Finds edges by looking for zero-crossings after filtering the image with a Laplacian of Gaussian (LoG) filter. Therefore, we will get two lines limiting our initial line. For every row we will draw the middle of the two detected points, to have at the end the whole trajectory.
+Third part is the Audio feedback. We set a fixed point, the position of the passenger using the device, and as an output we will have a sound which volume is proportional to the distance of this fixed position the trajectory we’ve just drawn, so that the passenger knows how far he is from the line and is therefore guided.
+This model gave good results on Matlab when we provided as input static images, yet we encountered errors on Simulink that prevented us from executing it on the Raspberry pi.
+
+\begin{center}
+\includegraphics[scale=0.2]{main/middleedge_image.png}
+\end{center}
+
+\subsection{Radon transform’s model}
+To begin with the image’s size is reduced to reduce the space it takes in memory. It is then filtered using a median filter to remove noise without blurring the image too much. Afterwards, using the canny edge detector, filtered image is converted into a binary one and the edges are sharpened.
+Then, the radon transform of the binary image is computed and used to find the main direction of the image’s edges and gives the angle between the main direction of the edges (which is considered as the line) and the vertical (which is the direction where the user is oriented).
+Eventually, sound is given in output depending on the angle, the bigger the angle is, the louder the sound is (on the left if the user is too far on the left, and same goes for the right).
+This technic consists of evaluating all the couples of the same colored pixels (at the worst case n pixels in a n pixel images, so two among n couples). That make n(n-1)/4 operations, so a complexity of O(n²). 
+
+The image is quite efficient in case of a straight line, which is not necessarily true (as there can be curved lines). That’s why this algorithm is not really interesting in this case. 
+The Radon transform can be appealing at first sight because it is easy to implement in Matlab and very good at detecting the main edges, but also slow as it has a high complexity. 
+\begin{center}
+\includegraphics[scale=0.6]{main/radon.png}
+\end{center}
+
+\subsection{Quantization model}
+Quantization in color: 
+To make the program more accurate, we decided to consider the input image colors, meaning that we must deal with 3 images instead of one. So, the solution is to quantize the image in a way that main colors appear just in one image. Using a k-mean image, we arrive at an n tones image where colors matter. This image can be treated with habitual image processing algorithms. 
+Then, all the line detector algorithms that we developed can be used (frequency, shape detector, linear regression) to find the line’s color. This color will be used as a reference to eliminate all other colors in future images, that makes the algorithm swift.
+The k-mean algorithm has a complexity of $O(n^2)$ where n is the size of the input data. Then we sample all same-colored segments middles (complexity $O(n)$, for approximately $sqrt(n)$ pixels considering the image is a square and that there is one middle per line), with the gradient descent linear regression (that is $O(I²)$, I being the number of points), we arrive at a complexity of O(n). Then we calculate the fit error and the line color. 
+
+The overall complexity is $O(n^2)$. At first sight, this is not very interesting. But considering that we keep in memory the right color, we can process in parallel an other program. 
+
+Next to the quantization of the image, we delete all non-line colors. We process on the others a middle-sampled linear regression. This algorithm finds the middles of all horizontal-colored segments (O(n) complexity, n being the number of pixels) and performs a linear regression on all those sampled pixels (approximatively $sqrt(n)$ ). Using a gradient descent linear regression (that is $O(I²)$, I being the number of points), we arrive at a complexity of O(n). Then we calculate the prediction line angle and send the sound. So, the algorithm complexity is linear with the number of pixels, which is very efficient. 
+The model’s strength is that it is still efficient with non-straight lines. However, it is quite weak against noises, because of the middle sampling. That’s why the quantization is necessary, with some low pass filtering and median filtering. 
+
+But considering that noise and errors are uniformly placed across the image and that the computing frequency is very low (more than 10 per second), errors are negligible.  
+
+So that’s why this algorithm has been implemented first. 
+
+\section{Ensemble}
+\subsection{Multi-threading}
+As the Raspberry pi has 4 threads, we will be using them for different tasks: 
+Thread A is for the quantization and color finding process. It takes in input an image, computes the color quantization and applies the line detector, gets the line’s color and stores it in memory. This process is a slow one. Thread B handles the line detector and generation process. It takes an image as input, reads the color found by thread A, deletes all other colors which make the line detection process more efficient and faster.
+In initialization, we launch thread A and once we have a color value, we launch thread B. Then both run in parallel. The B deals with many images very quickly to output the sound as fast as possible while A is running to update the line color used by B.    
+
+\subsection{Limitation}
+The limitation of the system is the speed of A, but this will not be seen by the user because the output does not depend on A. The speed of A should just impact the precision, if the line color changes faster than A processes. Considering the Raspberry pi, it may be sufficient, but the project is to make all different approaches together using tasks and the Debian smart gestion of tasks using multithreading. 
+Among the different difficulties we have encountered, the most constraining was Matlab coding. We were expecting to have difficulties with it, but not as much as we had, indeed we had a lot of little issues which made use lose a lot of time. For instance, the uint8 function, which converts an array of numbers to 8-bits unsigned integer, is random which caused errors in the algorithm. To get around this issue we didn’t change the data type to uint8 and just used double which turned out to be as efficient.
+Our initial plan was to put music (Hold the line, 1978, from Toto) for the sound output, but it didn’t work well with Simulink (it causes an unsolvable overflow), so we are now using a sinusoid for the sound output which is less entertaining but it works just fine.
+The installation of Matlab and Simulink on the Raspberry pi was also took some time
+
+\section{Integration Raspberry Pi}
+
+\section{Experiments}
+\subsection{Setup}
+Because of some difficulties with implementing programs which work in matlab and simulink, only the quantization and linear regression process could have been implemented. So it is the only one running in the experiments. 
+\begin{center}
+\includegraphics[scale=0.13]{main/maxime_image.jpeg}
+\end{center}
+
+\subsection{Results}
+On the 20 tries we have done, each time the line has been correctly found and the sound allowed us to follow the line correctly.  
+\begin{center}
+\includegraphics[scale=0.3]{main/pre_process.png}
+\includegraphics[scale=0.3]{main/pre_process2.png}
+\includegraphics[scale=0.4]{main/pre_process3.png}
+\end{center}
+
+\subsection{Analysis}
+During the experiences, an analysis of the raspberry pi core usage showed that none of the 4 cores have been used on its entirety. So as there is still some computing power available, the raspberry pi is too powerful for these tasks. 
+To improve the existing programs, we could multiply the A and B tasks by running them in parallel but with some different phases in launch in order to have more frequent results and then saturate the raspberry pi computing power.  But even without doing it the system is already sufficiently powerful.  
+The most interesting thing to do would be to find another micro-computer, that would be less powerful, but powerful enough to run this program. A less powerful computer would be cheaper and more affordable for concerned clients. 
+
+\section{Conclusion and future work}
+
+\subsection{Conclusion}
+The goal is to give the possibility to a visually impaired person to walk or run following a line on the ground using a Raspberry pi and Matlab. Through extensive research, we have developed a device, which takes images of the line, processes them, computes the angle between the line and the direction of the user and then gives and audio feedback on where he has to go.
+Overall, this project has been successful in demonstrating the potential of using a Raspberry Pi and it’s associated camera for assistive technology to help visually impaireed individuals. We hope that our system will be used by the community and will help blind people to move safely and easily in their daily lives. 
+
+\subsection{Future work }
+It is important to notice that this is an ongoing work and that there is still room for improvement as there are a lot of variables which aren’t taken into account yet. 
+For instance, the height of the ground isn’t considered so if there is a slope, a hole in the road or the sidewalk ends the user isn’t notified so he has to use a cane which isn’t very convenient if you want to run, and this would increase the cost of the device as a better camera would be needed. 
+Moreover, we could implement the program in python instead of MATLAB because unlike the latter, python is open source so if we use it, the device would become cheaper to produce and so cheaper for customers.
+Last but not least, if we had more time and experience, we would try to correct and optimize the Active Outline , Middle edge and Radon transform’s Model, so we can ensemble all the algorithms on a same Raspberry Pi on different cores and therefore obtain more specific results
+
+\section{User Manual}
+A user manual that gives enough information and guidance such that anybody (e.g., the tutor) can easily install the project on the same Raspberry Pi, with the same camera, and test it.
+(needs to be finished but we don't know exactly what to put in this section)
+" Connect the Raspberry Pi to the camera and headphones.
+Turn on the device and make sure the camera is properly aligned and focused on the line you want to follow.
+Start the program on the Raspberry Pi that processes the images and gives audio feedback.
+Begin walking or running along the line, and listen to the audio feedback for instructions on where to go.
+Make adjustments to the camera as needed for optimal performance."
+
+\end{document}

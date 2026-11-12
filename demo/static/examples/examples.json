@@ -1,0 +1,37 @@
+[
+  {
+    "file": "team_floor_tape.jpg",
+    "title": "Sol d'essai de l'équipe (ruban courbe)",
+    "source": "report/latex/main/pre_process.png (photo d'entrée, recadrée)",
+    "synthetic": false,
+    "reference_angle_deg": null
+  },
+  {
+    "file": "team_test_45.jpg",
+    "title": "Image de test synthétique de l'équipe",
+    "source": "archive/gaetan/45degre.jpeg (dessinée par l'équipe)",
+    "synthetic": true,
+    "reference_angle_deg": null
+  },
+  {
+    "file": "synthetic_5004.jpg",
+    "title": "Synthétique : ligne jaune sur béton",
+    "source": "holdtheline/synthetic.py, make_sample(5004, curved=False)",
+    "synthetic": true,
+    "reference_angle_deg": 23.7
+  },
+  {
+    "file": "synthetic_5002_curved.jpg",
+    "title": "Synthétique : ligne courbe sur asphalte",
+    "source": "holdtheline/synthetic.py, make_sample(5002, curved=True)",
+    "synthetic": true,
+    "reference_angle_deg": -22.0
+  },
+  {
+    "file": "synthetic_5007.jpg",
+    "title": "Synthétique : moquette, virage marqué",
+    "source": "holdtheline/synthetic.py, make_sample(5007, curved=False)",
+    "synthetic": true,
+    "reference_angle_deg": 29.1
+  }
+]

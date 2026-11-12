@@ -1,178 +1,145 @@
-# 🏃‍♂️ Hold The Line: Guidance System for the Visually Impaired
+# Hold The Line : guidage audio par suivi de ligne pour personnes malvoyantes
 
-Ce projet vise à développer un système portatif permettant d’aider les personnes malvoyantes à se déplacer en toute sécurité le long d’un parcours balisé. En utilisant un Raspberry Pi, une caméra et un casque audio, le système capte en temps réel l’image d’une ligne sur le sol, calcule l’angle entre cette ligne et la direction de l’utilisateur, et fournit un retour audio stéréophonique pour guider l’utilisateur. 🎧📷
+Projet de semestre en équipe de cinq (septembre 2022 à janvier 2023) : un Raspberry Pi 4 équipé d'une caméra filme une ligne tracée au sol, en estime l'angle par rapport à la direction de marche et guide l'utilisateur par un son stéréo dans un casque. Le système a été développé en MATLAB/Simulink et déployé sur la carte.
 
----
+![Pipeline « quantification + régression » déployé sur le Raspberry Pi, réparti sur les 4 cœurs](assets/pipeline_quantization_regression.png)
 
-## 📋 Table des matières
+*Pipeline embarqué (extrait du poster du projet) : un processus lent identifie la couleur de la ligne (k-means puis régressions), un processus rapide seuille l'image sur cette couleur, échantillonne les milieux de la ligne, en déduit l'angle par régression linéaire et génère le son.*
 
-1. [Introduction](#introduction)
-2. [Approches Exploitées](#approches-exploitées)
-   - [Active Outline Model](#active-outline-model)
-   - [Middle Edge Model](#middle-edge-model)
-   - [Radon Transform Model](#radon-transform-model)
-   - [Quantization & Middle-Sampled Linear Regression Model](#quantization--middle-sampled-linear-regression-model)
-3. [Ensemble & Multi-threading](#ensemble--multi-threading)
-4. [Expériences & Résultats](#expériences--résultats)
-5. [Conclusion & Perspectives](#conclusion--perspectives)
-6. [Mode d'emploi](#mode-demploi)
-7. [Instructions pour Développeurs](#instructions-pour-développeurs)
-8. [Contributeurs](#contributeurs)
-9. [Références](#références)
+## Problème
 
----
+Une personne malvoyante qui veut marcher ou courir seule sur un parcours balisé n'a aucun retour sur sa trajectoire. L'objectif était de construire un dispositif portable et peu coûteux qui suit une ligne au sol et traduit l'écart de direction en indication sonore. Le dispositif ne nécessite ni écran ni interaction.
 
-## 📖 Introduction
+## Approche
 
-Ce projet de semestre a pour objectif de permettre aux personnes malvoyantes de se déplacer en toute autonomie grâce à un système de guidage basé sur la détection d’une ligne. En capturant en temps réel des images et en analysant leur contenu, le système calcule l’angle entre la ligne et la direction de l’utilisateur, puis fournit un retour audio permettant d’ajuster le trajet. L’approche fait appel à des techniques variées de traitement d’image et de gestion multi-threadée sur un Raspberry Pi. 😊
+**Matériel** (poster) : Raspberry Pi 4 Model B 2 Go alimenté par un PiJuice HAT, Raspberry Pi Camera Module 2, casque audio.
 
----
+**Quatre méthodes de détection explorées** (rapport, §2) :
 
-## 🔍 Approches Exploitées
+| Méthode | Principe | Statut |
+|---|---|---|
+| Contours actifs (*snakes*) | courbe déformable minimisant une énergie (attache aux bords + régularité) | MATLAB, images fixes ([`matlab/approaches/contouractif.m`](matlab/approaches/contouractif.m)) |
+| Middle edge | compression, renforcement, lissage, puis détection de bords (LoG) et tracé du milieu des deux bords ligne par ligne | fonctionne sous MATLAB sur images fixes, erreurs sous Simulink ([`draw_line__1_.m`](matlab/approaches/draw_line__1_.m)) |
+| Transformée de Radon | filtre médian, Canny, puis Radon pour trouver l'orientation dominante | MATLAB ; coûteuse (O(n²)) et limitée aux lignes droites ([`find_line_radon.m`](matlab/approaches/find_line_radon.m)) |
+| **Quantification + régression** | k-means sur les couleurs RVB, choix de la couleur de la ligne, échantillonnage des milieux de segments, régression linéaire | **seule méthode déployée sur le Raspberry Pi** ([`simulink/projects5.slx`](simulink/projects5.slx)) |
 
-Plusieurs méthodes de détection ont été explorées pour identifier la trajectoire à suivre :
+<p align="center"><img src="assets/middle_edge_model.png" alt="Étapes de la méthode Middle edge : redimensionnement, renforcement, lissage, bords, ligne tracée" width="640"></p>
 
-### 💡 Active Outline Model
+*Méthode « middle edge » sur une image fixe (rapport, §2.2).*
 
-- **Principe :** Utilise la méthode des *contours actifs* (snakes) pour segmenter l’image.
-- **Fonctionnement :** Le contour évolue pour minimiser une fonction d’énergie qui combine la fidélité aux bords et la régularité du contour.
-- **Limites :** Calcul complexe et difficultés à obtenir une performance en temps réel.
+**Parallélisme** : la méthode déployée est découpée en deux tâches. La tâche A, lente, quantifie l'image et met à jour la couleur de référence de la ligne. La tâche B, rapide, ne garde que cette couleur, calcule l'angle et produit le son. Les deux tournent en parallèle sur les cœurs du Raspberry Pi.
 
-### ✨ Middle Edge Model
+**Sortie audio** : une sinusoïde dont les volumes gauche et droit valent sin² et cos² de (angle + π/4), saturés au-delà de ±45°. Les deux volumes somment à 1 ([`findsound.m`](matlab/simulink_blocks/findsound.m)). La musique *Hold the Line* (Toto) était prévue, mais provoquait un dépassement de capacité sous Simulink.
 
-- **Principe :** Applique une détection d’arêtes via un filtre Laplacien du Gaussien (LoG).
-- **Fonctionnement :**  
-  1. Compression et amélioration de l’image (affinage et lissage).  
-  2. Détection des bords donnant deux lignes limites de la trajectoire.  
-  3. Calcul du point médian pour chaque ligne de pixels.
-- **Retour Audio :** Le volume stéréophonique est ajusté en fonction de la distance entre l’utilisateur et la trajectoire.
-- **Complexité :** Environ O(n log(n)) grâce à l’utilisation des algorithmes de transformation de Fourier rapides.
+## Résultats
 
-### 🔄 Radon Transform Model
+| Mesure | Valeur | Source |
+|---|---|---|
+| Essais de suivi de ligne réussis | **20 / 20** | rapport §5.2 ; poster, encadré « Results » |
+| Charge processeur pendant les essais | ≈ 20 %, RAM presque vide | poster, encadré « Results » |
+| Utilisation des cœurs | aucun des 4 cœurs saturé | rapport §5.3 |
 
-- **Principe :** Utilise la transformation de Radon pour identifier l’orientation dominante des arêtes.
-- **Fonctionnement :**  
-  - Compression, filtrage par le détecteur Canny, et application de la transformation de Radon pour estimer l’angle de la ligne par rapport à la verticale.
-- **Limites :** Complexité élevée (O(n²)) et temps de calcul plus long.
+L'équipe en conclut que le Raspberry Pi 4 est surdimensionné pour cette tâche, et qu'un micro-ordinateur moins puissant suffirait et réduirait le coût. Les conditions des 20 essais (parcours, éclairage, vitesse de marche) ne sont pas détaillées dans les documents, et aucune mesure de latence n'a été publiée.
 
-### 🎨 Quantization & Middle-Sampled Linear Regression Model
+## Démo en ligne
 
-- **Principe :** Combine la quantification de couleurs par l’algorithme k-means++ et une régression linéaire sur les segments échantillonnés.
-- **Fonctionnement :**  
-  1. Quantification de l’image pour conserver les informations de couleur sans passer au niveau de gris.  
-  2. Extraction des milieux de segments de couleur similaires et application d’une régression linéaire pour estimer l’angle.
-- **Avantage :** Complexité linéaire (O(n)) après quantification, offrant des résultats rapides et précis.
-- **Retour Audio :** L’angle estimé est transformé en signal audio, modulant les volumes gauche et droit.
+**[elliotbch.github.io/hold_the_line](https://elliotbch.github.io/hold_the_line/)** : rien à installer, tout le calcul se fait dans le navigateur.
 
----
+La démo existe en deux versions : un site statique (dossier [`site/`](site/), publié sur GitHub Pages) qui exécute le code Python de `holdtheline/` directement dans le navigateur grâce à Pyodide (NumPy, SciPy, OpenCV, scikit-image en WebAssembly), et une API FastAPI (dossier [`demo/`](demo/)) à lancer en local ou avec Docker.
 
-## 🔧 Ensemble & Multi-threading
+Une démo web permet de choisir une image d'exemple ou d'importer une photo d'une ligne au sol, de voir l'image annotée (ligne détectée, points échantillonnés, angle), de lire l'angle en degrés et d'entendre le retour stéréo dans le navigateur (Web Audio API : volumes gauche/droite de `findsound.m`, onde carrée à 100 Hz comme dans le modèle Simulink). Un mode webcam traite une image par seconde (localement dans la version en ligne, sur le serveur dans la version API). Trois méthodes sont portées en Python dans [`holdtheline/`](holdtheline/), chacune en citant le fichier `.m` d'origine :
 
-Pour permettre un traitement en temps réel sur le Raspberry Pi, nous avons mis en place un système multi-threadé :
+| Méthode | Source MATLAB | Portage Python |
+|---|---|---|
+| Quantification + régression linéaire sur les milieux (déployée) | `matlab/simulink_blocks/rgbtoimg.m`, `findcolor.m`, `findsound.m` | `holdtheline/quantization.py` |
+| Middle edge | `matlab/approaches/draw_line__1_.m` | `holdtheline/middle_edge.py` |
+| Transformée de Radon | `matlab/approaches/find_line_radon.m` | `holdtheline/radon_method.py` |
 
-- **Thread A :**  
-  - Responsabilité : Quantification des couleurs et détection initiale de la ligne.  
-  - Tâche relativement lente mais essentielle pour établir la référence de couleur. 🧵
+Les paramètres du code MATLAB sont conservés (images 320×240 et 20 couleurs lus dans `simulink/projects5.slx`, filtres 18×18 et 16×16, etc.). Quelques erreurs d'indexation du code d'origine sont corrigées selon l'intention affichée, et signalées en commentaire : remise en forme des étiquettes k-means, rayon de la « sphère » de couleur, repliement θ/θ+90° de Radon qui perdait le signe, et loi stéréo de `findsound.m` (le `+ π/2` rendait le son toujours saturé à gauche ou à droite). Le son est joué du côté vers lequel on dérive, comme dans les branches saturées du bloc déployé : il faut s'en éloigner.
 
-- **Thread B :**  
-  - Responsabilité : Détection fine de la ligne et génération du signal audio de guidage en temps réel.  
-  - Fonctionne en parallèle avec Thread A pour assurer une réponse rapide. ⚡
+**Évaluation** ([`demo/eval_metrics.json`](demo/eval_metrics.json), `python scripts/evaluate.py`) : erreur angulaire sur 60 images **synthétiques** (sol texturé asphalte / béton / moquette, ligne blanche ou jaune, 30 droites et 30 courbes, angle de référence connu), générées par `holdtheline/synthetic.py` avec des graines non utilisées pendant la mise au point. Aucune photo réelle avec un angle mesuré n'était disponible : ces chiffres ne disent rien de la précision sur le terrain.
 
-Cette architecture permet d’offrir un guidage continu et fluide à l’utilisateur, même si la mise à jour de la référence de couleur se fait moins fréquemment.
+| Méthode | Lignes trouvées | Erreur moyenne | Droites | Courbes | Temps / image |
+|---|---|---|---|---|---|
+| Quantification + régression | 37 / 60 | 5,4° | 0,9° | 8,4° | 150 ms |
+| Middle edge | 60 / 60 | 2,1° | 1,4° | 2,8° | 18 ms |
+| Radon | 60 / 60 | 3,6° | 1,1° | 6,0° | 212 ms |
 
----
+*Erreur moyenne calculée sur les images où une ligne est trouvée. Temps mesurés sur Apple M2 Pro. La méthode déployée échoue surtout sur les lignes étroites : à 320 px de large, le flou 18×18 puis le filtre médian 16×16 effacent une ligne de moins d'environ 10 % de la largeur de l'image.*
 
-## 📊 Expériences & Résultats
+- Version en ligne (statique) : https://elliotbch.github.io/hold_the_line/ ; en local : `python3 -m http.server 8000 -d site`. Après une modification de `holdtheline/`, `sh site/sync_py.sh` met à jour la copie dans `site/py/` (le workflow `.github/workflows/pages.yml` le fait aussi avant de publier). Fidélité au serveur : `site/tests/parity.py` puis `site/tests/parity.html`.
+- Version API (FastAPI), en local, depuis la racine du dépôt :
 
-- **Environnement de Test :**  
-  - Tests réalisés dans le Marconi amphi-théâtre et sur le terrain.
-  
-- **Performances :**  
-  - Sur 20 essais, le système a détecté correctement la ligne à chaque fois.
-  - Le retour audio stéréophonique guide efficacement l’utilisateur vers la trajectoire souhaitée.
-  
-- **Observations :**  
-  - Quelques ajustements de calibration étaient nécessaires pour optimiser la détection des couleurs et réduire le bruit environnant.
-  - L’approche multi-thread permet une transition fluide des signaux, améliorant l’expérience utilisateur.
+```bash
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -r demo/requirements.txt
+uvicorn demo.app:app --port 7860      # puis ouvrir http://localhost:7860
+pip install pytest httpx && pytest && pytest demo/tests
+```
 
----
+Image Docker (identique au Space) : `./demo/sync_core.sh && docker build -t hold-the-line-demo demo && docker run --rm -p 7860:7860 hold-the-line-demo`. Détails dans [`demo/README.md`](demo/README.md) ; exemples régénérés par `python scripts/make_examples.py`.
 
-## 🎓 Conclusion & Perspectives
+## Stack
 
-**Conclusion :**  
-Le système "Hold The Line" démontre avec succès qu’une solution basée sur le Raspberry Pi, couplée à un traitement d’image en temps réel et à un retour audio stéréophonique, peut grandement faciliter la mobilité des personnes malvoyantes. 🌟
+MATLAB · Simulink (Raspberry Pi Support Package, déploiement embarqué) · Image Processing / Audio / DSP System Toolbox · Raspberry Pi 4 · traitement d'image (k-means, régression linéaire, LoG, Canny, transformée de Radon, contours actifs) · portage Python : NumPy, OpenCV, SciPy, scikit-image, FastAPI, Web Audio API
 
-**Perspectives :**  
-- Optimiser la vitesse de traitement pour réduire davantage la latence.
-- Intégrer et améliorer les approches multiples pour une détection plus robuste.
-- Envisager une implémentation en Python pour rendre le système plus accessible et économique.
-- Améliorer la résistance au bruit et la précision de la détection sur différentes surfaces.
+## Structure du dépôt
 
----
+```
+.
+├── assets/                       visuels du README
+├── simulink/
+│   ├── projects5.slx             modèle Simulink final (version déployée)
+│   └── projects5.elf             binaire compilé pour le Raspberry Pi
+├── matlab/
+│   ├── simulink_blocks/          code des 3 blocs MATLAB Function du modèle, extrait pour lecture
+│   │                             (rgbtoimg : entrée + filtre ; findcolor : tâche lente ; findsound : tâche rapide + son)
+│   └── approaches/               prototypes des autres méthodes (contours actifs, middle edge, Radon)
+├── holdtheline/                  portage Python des détecteurs (quantification, middle edge, Radon) et images synthétiques
+├── scripts/                      evaluate.py (erreur angulaire → demo/eval_metrics.json), make_examples.py
+├── tests/                        tests pytest du portage
+├── site/                         démo en ligne statique (GitHub Pages, Pyodide)
+├── demo/                         démo web FastAPI (Hugging Face Space, Docker)
+├── requirements.txt              dépendances Python du portage
+├── report/latex/main/            sources LaTeX du rapport final et figures
+├── docs/
+│   ├── poster_hold_the_line.pdf  poster A1
+│   ├── presentation_projet_s5.pdf
+│   └── liens_presentation.txt    diapositives et script de présentation (Google Docs)
+└── archive/                      historique de travail de l'équipe (voir ci-dessous)
+```
 
-## 📖 Mode d'emploi
+`archive/` conserve les brouillons personnels des membres de l'équipe (`driss/`, `gaetan/`), d'anciennes versions du modèle (`projets5.slx`, `audio_project.slx`) et le README et la licence Apache 2.0 du dépôt GitLab d'origine. Les caches Simulink (`slprj/`, `*_rtw/`, `codegen/`, `.slxc`), les sauvegardes automatiques (`.asv`, `.autosave`), un fichier d'échange d'éditeur et une copie intégrale en double de `gaetan/` ont été retirés du suivi.
 
-### 🚀 Pour les Utilisateurs
+## Reproduire
 
-1. **Utilisation :**  
-   - Allumez le système en appuyant sur le bouton dédié (le lancement s’effectue automatiquement sur le Raspberry Pi).  
-   - Placez le casque et suivez les instructions audio stéréophonique pour rester centré sur la ligne.
-   
-2. **Mise à jour du Firmware :**  
-   - Connectez le Raspberry Pi à l’alimentation via le câble USB-C.  
-   - Téléchargez la version la plus récente du firmware depuis notre GitLab : [GitLab Project](https://gitlab.eurecom.fr/the-win-team-a3/project-s5).  
-   - Ouvrez un terminal et connectez-vous via SFTP :  
-     ```
-     sftp pi@holdtheline.local
-     ```
-   - Supprimez l’ancien fichier et transférez le nouveau :  
-     ```
-     rm projects5.elf
-     put /chemin/vers/projects5.elf /home/pi
-     ```
-   - Déconnectez le câble d’alimentation et redémarrez en maintenant le bouton enfoncé.
+Prérequis : MATLAB et Simulink avec le *Simulink Support Package for Raspberry Pi Hardware*, Image Processing Toolbox, Audio Toolbox et DSP System Toolbox. Il faut aussi un Raspberry Pi 4 avec sa caméra et un casque.
 
----
+1. Brancher la caméra et le casque au Raspberry Pi, puis le relier à l'ordinateur en Ethernet pour le premier déploiement.
+2. Ouvrir `simulink/projects5.slx`, sélectionner le Raspberry Pi comme matériel cible, puis compiler et déployer (*Build, Deploy & Start*).
+3. Débrancher l'Ethernet et tester en conditions réelles.
 
-## 👨‍💻 Instructions pour Développeurs
+Pour mettre à jour la carte sans recompiler, il suffit de copier le binaire :
 
-### Pré-requis logiciels :
-- **MATLAB et Simulink** avec les packages de support pour Raspberry Pi.
-- **Audio Toolbox** et **DSP System Toolbox**.
+```bash
+sftp pi@holdtheline.local
+put simulink/projects5.elf /home/pi
+```
 
-### Connexions matérielles :
-- Connectez le Raspberry Pi à la caméra, aux écouteurs et à la batterie.
-- Utilisez un câble Ethernet pour le déploiement initial depuis votre ordinateur.
+Le code de travail complet était hébergé sur le GitLab interne de l'école, dont l'accès est probablement restreint. Ce dépôt n'a pas été recompilé lors de sa remise en forme, faute de licence MATLAB disponible.
 
-### Déploiement :
-1. Configurez la connexion avec le Raspberry Pi via Simulink.
-2. Sélectionnez le bon matériel dans les paramètres et lancez la compilation.
-3. Une fois le déploiement terminé, débranchez le Raspberry Pi et testez le système en conditions réelles.
+## Limites
 
-Le code complet est accessible sur notre GitLab : [GitLab Repository](https://gitlab.eurecom.fr/the-win-team-a3/project-s5)
+- Une seule des quatre méthodes tourne sur la carte. Les trois autres sont restées au stade de prototypes MATLAB sur images fixes.
+- La régression linéaire résume la ligne par une seule droite : sur une ligne très courbe, l'angle n'est qu'une approximation.
+- La validation se limite à 20 essais au protocole non documenté, sans mesure de latence ni d'écart de trajectoire.
+- Le système ne gère ni les obstacles, ni le relief (pente, trou, fin de trottoir).
+- La chaîne embarquée repose sur MATLAB, une solution propriétaire. Le rapport proposait un portage en Python : il existe désormais pour la détection (`holdtheline/`), mais il n'a pas été testé sur le Raspberry Pi ni sur le terrain, et son évaluation se limite à des images synthétiques. La méthode « contours actifs », qui demande de placer les points à la souris (`ginput`), n'est pas portée.
 
----
+## Équipe et contexte
 
-## 👥 Contributeurs
+**Team A, groupe 3** : Elliot Bouchy, Gaëtan Plisson, Maxime Belpois, Lina Chiadmi, Meriem Driss. Projet encadré par Raphaël Troncy.
 
-**Team A - Group 3**  
-- **Elliot Bouchy**  
-- **Gaëtan Plisson**  
-- **Maxime Belpois**  
-- **Lina Chiadmi**  
-- **Meriem Driss**  
+Projet de semestre (Projet S5), du 19/09/2022 au 27/01/2023.
 
-Sous la supervision de **Raphaël Troncy** à EURECOM, Sophia Antipolis.
-
----
-
-## 📚 Références
-
-1. Dugelay, J.-L. – *Image Processing*, 2022.  
-2. Todisco, M. – *Sound Processing*, 2022.  
-3. Galdi, C. – *Computer Programming*, 2022.  
-4. Magnac, M.-A. – *Digital Responsibility*, 2023.  
-5. Pacalet, R. – *Project S5*, 2022.
-
----
-
+Poster du projet : [aperçu](assets/poster.jpg) · [PDF A1](docs/poster_hold_the_line.pdf).

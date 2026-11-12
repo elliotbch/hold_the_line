@@ -1,0 +1,9 @@
+[
+ "holdtheline/__init__.py",
+ "holdtheline/common.py",
+ "holdtheline/middle_edge.py",
+ "holdtheline/quantization.py",
+ "holdtheline/radon_method.py",
+ "holdtheline/synthetic.py",
+ "web_detect.py"
+]

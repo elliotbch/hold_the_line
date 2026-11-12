@@ -1,0 +1,7 @@
+# Python port of the detectors (holdtheline/), evaluation and example scripts.
+# The original MATLAB/Simulink project needs MATLAB instead (see README).
+numpy>=1.26,<3
+opencv-python-headless>=4.8,<6
+scipy>=1.11,<2
+scikit-image>=0.22,<0.27
+pytest>=8,<9

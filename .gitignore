@@ -1,0 +1,37 @@
+# Système / éditeurs
+.DS_Store
+Thumbs.db
+*.swp
+*.kate-swp
+*~
+
+# MATLAB / Simulink : caches, sauvegardes automatiques et artefacts de build
+slprj/
+codegen/
+*_rtw/
+*.slxc
+*.asv
+*.autosave
+*.slx.original
+*.slx.r20*
+*.mex*
+sl_proj.tmw
+
+# Binaires compilés : seul simulink/projects5.elf (firmware déployé) est suivi
+*.elf
+!/simulink/projects5.elf
+
+# Archives : leur contenu est versionné décompressé (report/latex/)
+*.zip
+
+# Fichiers retirés du suivi mais conservés en local
+/archive/gaetan/archive/
+/archive/groupes Projet S5.xlsx
+
+# Python (portage envisagé)
+__pycache__/
+.venv/
+
+# Démo : copie de holdtheline/ faite par demo/sync_core.sh pour le build Docker
+demo/_core/
+.pytest_cache/

@@ -1,0 +1,280 @@
+{
+ "api": "http://127.0.0.1:8189",
+ "cases": [
+  {
+   "file": "team_floor_tape.jpg",
+   "method": "middle_edge",
+   "expected": {
+    "found": true,
+    "angle_deg": 24.57,
+    "left": 0.878,
+    "right": 0.122,
+    "n_samples": 124,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": null,
+    "lateral_offset_ratio": -0.044,
+    "message": "",
+    "time_ms": 180.5
+   }
+  },
+  {
+   "file": "team_floor_tape.jpg",
+   "method": "quantization",
+   "expected": {
+    "found": true,
+    "angle_deg": -5.4,
+    "left": 0.406,
+    "right": 0.594,
+    "n_samples": 36,
+    "line_color": [
+     206.7,
+     206.1,
+     202.1
+    ],
+    "threshold": 17.17,
+    "theta_peak": null,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 684.9
+   }
+  },
+  {
+   "file": "team_floor_tape.jpg",
+   "method": "radon",
+   "expected": {
+    "found": true,
+    "angle_deg": -6.0,
+    "left": 0.396,
+    "right": 0.604,
+    "n_samples": 0,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": 6,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 889.3
+   }
+  },
+  {
+   "file": "team_test_45.jpg",
+   "method": "middle_edge",
+   "expected": {
+    "found": true,
+    "angle_deg": -49.1,
+    "left": 0.0,
+    "right": 1.0,
+    "n_samples": 120,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": null,
+    "lateral_offset_ratio": 0.344,
+    "message": "",
+    "time_ms": 65.0
+   }
+  },
+  {
+   "file": "team_test_45.jpg",
+   "method": "quantization",
+   "expected": {
+    "found": true,
+    "angle_deg": -48.76,
+    "left": 0.0,
+    "right": 1.0,
+    "n_samples": 41,
+    "line_color": [
+     21.1,
+     234.8,
+     11.6
+    ],
+    "threshold": 14.02,
+    "theta_peak": null,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 364.2
+   }
+  },
+  {
+   "file": "team_test_45.jpg",
+   "method": "radon",
+   "expected": {
+    "found": true,
+    "angle_deg": -49.0,
+    "left": 0.0,
+    "right": 1.0,
+    "n_samples": 0,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": 49,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 379.1
+   }
+  },
+  {
+   "file": "synthetic_5004.jpg",
+   "method": "middle_edge",
+   "expected": {
+    "found": true,
+    "angle_deg": 20.93,
+    "left": 0.834,
+    "right": 0.166,
+    "n_samples": 7,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": null,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 45.6
+   }
+  },
+  {
+   "file": "synthetic_5004.jpg",
+   "method": "quantization",
+   "expected": {
+    "found": true,
+    "angle_deg": 23.59,
+    "left": 0.867,
+    "right": 0.133,
+    "n_samples": 105,
+    "line_color": [
+     220.0,
+     191.7,
+     59.2
+    ],
+    "threshold": 15.3,
+    "theta_peak": null,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 494.7
+   }
+  },
+  {
+   "file": "synthetic_5004.jpg",
+   "method": "radon",
+   "expected": {
+    "found": true,
+    "angle_deg": 25.0,
+    "left": 0.883,
+    "right": 0.117,
+    "n_samples": 0,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": 155,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 555.7
+   }
+  },
+  {
+   "file": "synthetic_5002_curved.jpg",
+   "method": "middle_edge",
+   "expected": {
+    "found": true,
+    "angle_deg": -22.14,
+    "left": 0.151,
+    "right": 0.849,
+    "n_samples": 120,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": null,
+    "lateral_offset_ratio": -0.125,
+    "message": "",
+    "time_ms": 65.9
+   }
+  },
+  {
+   "file": "synthetic_5002_curved.jpg",
+   "method": "quantization",
+   "expected": {
+    "found": true,
+    "angle_deg": -5.86,
+    "left": 0.398,
+    "right": 0.602,
+    "n_samples": 21,
+    "line_color": [
+     239.1,
+     239.1,
+     239.1
+    ],
+    "threshold": 17.67,
+    "theta_peak": null,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 198.1
+   }
+  },
+  {
+   "file": "synthetic_5002_curved.jpg",
+   "method": "radon",
+   "expected": {
+    "found": true,
+    "angle_deg": -31.0,
+    "left": 0.059,
+    "right": 0.941,
+    "n_samples": 0,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": 31,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 546.6
+   }
+  },
+  {
+   "file": "synthetic_5007.jpg",
+   "method": "middle_edge",
+   "expected": {
+    "found": true,
+    "angle_deg": 29.29,
+    "left": 0.927,
+    "right": 0.073,
+    "n_samples": 120,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": null,
+    "lateral_offset_ratio": -0.062,
+    "message": "",
+    "time_ms": 35.9
+   }
+  },
+  {
+   "file": "synthetic_5007.jpg",
+   "method": "quantization",
+   "expected": {
+    "found": true,
+    "angle_deg": 24.44,
+    "left": 0.877,
+    "right": 0.123,
+    "n_samples": 10,
+    "line_color": [
+     186.8,
+     186.9,
+     187.2
+    ],
+    "threshold": 8.51,
+    "theta_peak": null,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 172.8
+   }
+  },
+  {
+   "file": "synthetic_5007.jpg",
+   "method": "radon",
+   "expected": {
+    "found": true,
+    "angle_deg": 30.0,
+    "left": 0.933,
+    "right": 0.067,
+    "n_samples": 0,
+    "line_color": null,
+    "threshold": null,
+    "theta_peak": 150,
+    "lateral_offset_ratio": null,
+    "message": "",
+    "time_ms": 686.3
+   }
+  }
+ ]
+}

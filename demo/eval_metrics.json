@@ -1,0 +1,113 @@
+{
+  "description": "Absolute angle error (degrees) between the detected line and the reference line, on synthetic ground images. The MAE is computed over the images where the method returned a line; detection_rate gives the share of images where it did.",
+  "dataset": {
+    "generator": "holdtheline/synthetic.py (dataset)",
+    "n_straight": 30,
+    "n_curved": 30,
+    "seed": 1000,
+    "size": "640x480",
+    "content": "asphalt / concrete / carpet textures, white or yellow line with rough edges, perspective narrowing, lighting gradient, optional shadow, blur, noise, JPEG q85; angles uniform in [-35, 35] degrees",
+    "reference_angle": "least-squares straight fit of the true centre line over all rows (exact drawing angle for straight lines)",
+    "synthetic": true,
+    "note": "the port was debugged on seeds 2023-2042, disjoint from the evaluation seeds"
+  },
+  "methods": {
+    "quantization": {
+      "source": "matlab/simulink_blocks/rgbtoimg.m, findcolor.m, findsound.m",
+      "all": {
+        "n_images": 60,
+        "n_detected": 37,
+        "detection_rate": 0.617,
+        "mae_deg": 5.36,
+        "median_ae_deg": 5.17,
+        "p90_ae_deg": 10.53,
+        "share_within_5deg": 0.486
+      },
+      "straight": {
+        "n_images": 30,
+        "n_detected": 15,
+        "detection_rate": 0.5,
+        "mae_deg": 0.86,
+        "median_ae_deg": 0.54,
+        "p90_ae_deg": 2.36,
+        "share_within_5deg": 1.0
+      },
+      "curved": {
+        "n_images": 30,
+        "n_detected": 22,
+        "detection_rate": 0.733,
+        "mae_deg": 8.42,
+        "median_ae_deg": 9.22,
+        "p90_ae_deg": 11.61,
+        "share_within_5deg": 0.136
+      },
+      "mean_time_ms": 149.9
+    },
+    "middle_edge": {
+      "source": "matlab/approaches/draw_line__1_.m",
+      "all": {
+        "n_images": 60,
+        "n_detected": 60,
+        "detection_rate": 1.0,
+        "mae_deg": 2.1,
+        "median_ae_deg": 0.21,
+        "p90_ae_deg": 1.56,
+        "share_within_5deg": 0.917
+      },
+      "straight": {
+        "n_images": 30,
+        "n_detected": 30,
+        "detection_rate": 1.0,
+        "mae_deg": 1.42,
+        "median_ae_deg": 0.21,
+        "p90_ae_deg": 1.2,
+        "share_within_5deg": 0.967
+      },
+      "curved": {
+        "n_images": 30,
+        "n_detected": 30,
+        "detection_rate": 1.0,
+        "mae_deg": 2.77,
+        "median_ae_deg": 0.22,
+        "p90_ae_deg": 6.52,
+        "share_within_5deg": 0.867
+      },
+      "mean_time_ms": 18.1
+    },
+    "radon": {
+      "source": "matlab/approaches/find_line_radon.m",
+      "all": {
+        "n_images": 60,
+        "n_detected": 60,
+        "detection_rate": 1.0,
+        "mae_deg": 3.57,
+        "median_ae_deg": 1.73,
+        "p90_ae_deg": 8.23,
+        "share_within_5deg": 0.733
+      },
+      "straight": {
+        "n_images": 30,
+        "n_detected": 30,
+        "detection_rate": 1.0,
+        "mae_deg": 1.11,
+        "median_ae_deg": 1.14,
+        "p90_ae_deg": 1.58,
+        "share_within_5deg": 1.0
+      },
+      "curved": {
+        "n_images": 30,
+        "n_detected": 30,
+        "detection_rate": 1.0,
+        "mae_deg": 6.04,
+        "median_ae_deg": 5.76,
+        "p90_ae_deg": 9.85,
+        "share_within_5deg": 0.467
+      },
+      "mean_time_ms": 211.8
+    }
+  },
+  "command": "python scripts/evaluate.py --n 30 --seed 1000",
+  "date": "2026-11-12",
+  "machine": "arm64 / Darwin / Python 3.11.14",
+  "duration_s": 23.0
+}

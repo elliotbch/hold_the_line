@@ -1,0 +1,8 @@
+# Demo only (CPU)
+fastapi>=0.110,<1
+uvicorn>=0.29,<1
+python-multipart>=0.0.9,<1
+numpy>=1.26,<3
+opencv-python-headless>=4.8,<6
+scipy>=1.11,<2
+scikit-image>=0.22,<0.27

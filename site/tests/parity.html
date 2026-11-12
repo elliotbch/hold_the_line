@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parité site / API</title>
+<style>
+  :root { --bg: #f7f8fa; --text: #1b2333; --muted: #5b6475; --border: #e3e6ec; --ok: #1f7a4d; --ko: #b54708; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0f141c; --text: #e6e9ef; --muted: #a3acbb; --border: #2a3342; --ok: #4cc38a; --ko: #f0a35e; } }
+  body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; }
+  table { border-collapse: collapse; font-size: .88rem; }
+  th, td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  .ok { color: var(--ok); font-weight: 600; } .ko { color: var(--ko); font-weight: 600; }
+  pre { color: var(--muted); }
+</style>
+</head>
+<body>
+<h1>Parité : site statique (Pyodide) / démo FastAPI</h1>
+<p>Tolérance : même verdict (ligne trouvée ou non) ; |Δ angle| ≤ 0,05° et |Δ volume| ≤ 0,002 pour le milieu des bords et Radon ; |Δ angle| ≤ 0,5° et |Δ volume| ≤ 0,01 pour la quantification (le k-means d'OpenCV 4.10, seule version disponible dans Pyodide, ne reproduit pas toujours celui d'OpenCV 5.0 du serveur).</p>
+<p id="status">Chargement de Pyodide…</p>
+<div id="out"></div>
+<pre id="diff"></pre>
+<script>
+(async () => {
+  const $ = (id) => document.getElementById(id);
+  const TOL = { middle_edge: [0.05, 0.002], radon: [0.05, 0.002], quantization: [0.5, 0.01] };
+  const exp = await (await fetch("expected_api.json", { cache: "no-cache" })).json();
+  const w = new Worker("../assets/detect-worker.js");
+  const pending = new Map();
+  let ready, radon;
+  const readyP = new Promise((r) => (ready = r)), radonP = new Promise((r) => (radon = r));
+  w.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === "ready") ready(m);
+    else if (m.type === "radon-ready") radon(m);
+    else if (m.type === "result") pending.get(m.id)(m.data);
+    else if (m.type === "error") { $("status").textContent = "Erreur : " + m.message; if (m.id) pending.get(m.id)({ error: m.message }); }
+  };
+  w.postMessage({ type: "init" });
+  const info = await readyP;
+  const rinfo = await radonP;
+  $("status").textContent = `Pyodide + NumPy/SciPy/OpenCV prêts en ${(info.ms / 1000).toFixed(2)} s, scikit-image en ${(rinfo.ms / 1000).toFixed(2)} s de plus.`;
+  const detect = (bytes, method, id) => new Promise((res) => { pending.set(id, res); w.postMessage({ type: "detect", id, method, bytes }); });
+  const files = {};
+  const rows = [], diffs = [];
+  let id = 0, allOk = true;
+  for (const c of exp.cases) {
+    files[c.file] ??= new Uint8Array(await (await fetch("../assets/examples/" + c.file)).arrayBuffer());
+    const d = await detect(files[c.file], c.method, ++id);
+    const e = c.expected;
+    const dA = d.found && e.found ? Math.abs(d.angle_deg - e.angle_deg) : 0;
+    const dG = d.found && e.found ? Math.max(Math.abs(d.left - e.left), Math.abs(d.right - e.right)) : 0;
+    const [tA, tG] = TOL[c.method];
+    const ok = !d.error && d.found === e.found && dA <= tA + 1e-9 && dG <= tG + 1e-9;
+    if (!ok) { allOk = false; diffs.push(`${c.file} ${c.method}: API=${JSON.stringify(e)} site=${JSON.stringify({ ...d, image: undefined })}`); }
+    rows.push({ file: c.file, method: c.method, api: e.found ? e.angle_deg : null, site: d.found ? d.angle_deg : null,
+      d_angle: +dA.toFixed(3), d_gain: +dG.toFixed(4), n_api: e.n_samples, n_site: d.n_samples,
+      api_ms: e.time_ms, site_ms: d.time_ms, worker_ms: Math.round(d.worker_ms), exact: !d.error && d.found === e.found && dA === 0 && d.n_samples === e.n_samples, ok });
+  }
+  window.__parity = { ok: allOk, load_ms: info.ms, bytes: info.bytes, radon_ms: rinfo.ms, radon_bytes: rinfo.bytes,
+    versions: { ...info.versions, skimage: rinfo.version }, rows };
+  $("out").innerHTML = `<table><thead><tr><th>Image</th><th>Méthode</th><th>Angle API</th><th>Angle site</th><th>|Δ angle|</th><th>Points API / site</th><th>Temps API</th><th>Temps site</th><th>Conforme</th></tr></thead><tbody>` +
+    rows.map((r) => `<tr><td>${r.file}</td><td>${r.method}</td><td>${r.api ?? "–"}</td><td>${r.site ?? "–"}</td><td>${r.d_angle}</td>
+      <td>${r.n_api} / ${r.n_site}</td><td>${r.api_ms} ms</td><td>${r.site_ms} ms</td><td class="${r.ok ? "ok" : "ko"}">${r.ok ? "oui" : "NON"}</td></tr>`).join("") + "</tbody></table>";
+  $("status").textContent += allOk ? " Tous les cas sont dans la tolérance." : " Des écarts dépassent la tolérance (voir ci-dessous).";
+  $("diff").textContent = diffs.join("\n");
+})();
+</script>
+</body>
+</html>

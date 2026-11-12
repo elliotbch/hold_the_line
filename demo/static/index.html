@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hold The Line</title>
+<meta name="description" content="Détectez une ligne peinte au sol, estimez son angle et écoutez le son de guidage stéréo d'un guide audio pour piétons malvoyants (portage Python d'un projet MATLAB/Simulink).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f8fa; --card: #ffffff; --border: #e3e6ec; --text: #1b2333; --muted: #5b6475;
+    --accent: #1e3a5f; --accent-light: #e8eef6; --success: #1f7a4d; --warn: #b54708;
+    --on-accent: #ffffff; --track: #eef0f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f141c; --card: #171e29; --border: #2a3342; --text: #e6e9ef; --muted: #a3acbb;
+      --accent: #8fb3e0; --accent-light: #1f2a3a; --success: #4cc38a; --warn: #f0a35e;
+      --on-accent: #0f141c; --track: #222b38;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  header h1 { margin: 0 0 4px; font-size: 1.7rem; letter-spacing: -0.01em; }
+  header p { margin: 0 0 10px; color: var(--muted); }
+  .links { display: flex; flex-wrap: wrap; gap: 8px 18px; font-weight: 500; font-size: .95rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-top: 20px; }
+  h2 { font-size: 1.15rem; margin: 0 0 12px; }
+  h3 { font-size: .95rem; margin: 18px 0 8px; }
+  .muted { color: var(--muted); }
+  .small { font-size: .88rem; }
+  .examples { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .ex { border: 1px solid var(--border); background: var(--card); border-radius: 10px; padding: 0; overflow: hidden;
+    cursor: pointer; text-align: left; color: var(--text); font: inherit; }
+  .ex img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; background: var(--track); }
+  .ex span { display: block; padding: 6px 8px; font-size: .8rem; line-height: 1.3; }
+  .ex[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-top: 16px; }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--text); padding: 7px 12px; font: inherit; font-size: .9rem; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .btn { font: inherit; font-weight: 600; border-radius: 8px; padding: 8px 14px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); display: inline-block; }
+  .btn.secondary { background: transparent; color: var(--accent); font-weight: 500; }
+  .btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: #fff; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .result { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+  .result img { width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; background: var(--track); }
+  .angle { font-size: 2.4rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .angle small { font-size: 1rem; font-weight: 500; color: var(--muted); }
+  .bars { margin: 14px 0; }
+  .bar { display: grid; grid-template-columns: 52px 1fr 48px; gap: 8px; align-items: center; font-size: .9rem; margin: 6px 0; }
+  .track { height: 12px; background: var(--track); border-radius: 6px; overflow: hidden; }
+  .fill { height: 100%; background: var(--accent); width: 0; transition: width .25s; }
+  dl.stats { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 10px 0 0; font-size: .88rem; }
+  dl.stats dt { color: var(--muted); }
+  dl.stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); vertical-align: -2px; margin-right: 6px; }
+  .error { color: var(--warn); font-weight: 500; margin-top: 10px; }
+  video { display: none; }
+  table.metrics { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  table.metrics th, table.metrics td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  table.metrics th:first-child, table.metrics td:first-child { text-align: left; }
+  .scroll { overflow-x: auto; }
+  ul.how { margin: 0; padding-left: 20px; }
+  ul.how li { margin: 4px 0; }
+  @media (max-width: 720px) {
+    .result { grid-template-columns: 1fr; }
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Hold The Line</h1>
+    <p>Repérez une ligne peinte au sol sur une photo, mesurez son angle par rapport à la direction de marche et écoutez le son stéréo qui guidait un marcheur malvoyant. Portage Python d'un projet étudiant MATLAB/Simulink.</p>
+    <div class="links">
+      <a href="https://github.com/elliotbch/hold_the_line">Code sur GitHub</a>
+      <a href="https://www.malt.fr/profile/elliotbouchy1">Elliot Bouchy sur Malt</a>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="try-h">
+    <h2 id="try-h">Essayer</h2>
+    <p class="small muted" style="margin-top:-6px">Choisissez une image, ou importez une photo d'une ligne au sol prise en regardant devant soi (le haut de l'image correspond à la direction de marche).</p>
+    <div class="examples" id="examples" role="group" aria-label="Images d'exemple"></div>
+    <p class="small muted" id="ex-note">Trois exemples viennent du dépôt du projet ; trois sont des images synthétiques (sol texturé, ligne peinte) générées par <code>holdtheline/synthetic.py</code>, avec un angle de référence connu.</p>
+
+    <div class="controls">
+      <div>
+        <div class="small muted" id="method-label" style="margin-bottom:4px">Méthode de détection</div>
+        <div class="seg" role="group" aria-labelledby="method-label" id="methods">
+          <button type="button" data-m="middle_edge" aria-pressed="true">Milieu des bords</button>
+          <button type="button" data-m="quantization" aria-pressed="false">Quantification + régression</button>
+          <button type="button" data-m="radon" aria-pressed="false">Radon</button>
+        </div>
+      </div>
+      <label class="btn secondary" style="cursor:pointer">Importer une photo<input type="file" id="file" accept="image/*" class="sr-only"></label>
+      <button type="button" class="btn secondary" id="cam" aria-pressed="false">Utiliser la webcam</button>
+    </div>
+    <video id="video" playsinline muted></video>
+    <div class="error" id="error" role="alert"></div>
+  </section>
+
+  <section class="card" aria-labelledby="res-h" id="result-card" hidden>
+    <h2 id="res-h">Résultat</h2>
+    <div class="result">
+      <div>
+        <div id="out-img-box"></div>
+        <p class="small muted" style="margin:6px 0 0">Rouge : droite ajustée. Vert : milieux échantillonnés. Blanc : direction de marche. Orange : pixels retenus comme couleur de la ligne (quantification). Cyan : bords (milieu des bords, Radon).</p>
+      </div>
+      <div>
+        <div class="angle" id="angle" aria-live="polite">–</div>
+        <div class="small muted" id="angle-help"></div>
+        <div class="bars" aria-label="Volumes stéréo">
+          <div class="bar"><span>Gauche</span><div class="track"><div class="fill" id="fill-l"></div></div><span id="val-l">–</span></div>
+          <div class="bar"><span>Droite</span><div class="track"><div class="fill" id="fill-r"></div></div><span id="val-r">–</span></div>
+        </div>
+        <button type="button" class="btn" id="play" aria-pressed="false">Jouer le son de guidage</button>
+        <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="invert"> Son du côté vers lequel tourner (au lieu du côté vers lequel on dérive)</label>
+        <dl class="stats" id="stats"></dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="how-h">
+    <h2 id="how-h">Comment ça marche</h2>
+    <ul class="how">
+      <li><strong>Quantification + régression</strong> (la méthode déployée sur le Raspberry Pi, <code>findcolor.m</code>, <code>findsound.m</code>) : flou 18&times;18, k-means à 20 couleurs ; la couleur dont les milieux de segments s'alignent le mieux sur une droite est celle de la ligne. On garde ensuite cette couleur, on applique un filtre médian 16&times;16, on échantillonne le milieu du segment de chaque ligne de pixels et on ajuste une droite.</li>
+      <li><strong>Milieu des bords</strong> (<code>draw_line__1_.m</code>) : réduction, renforcement de la netteté, flou gaussien, bords par laplacien de gaussienne, milieu des deux bords sur chaque ligne de pixels, puis le même ajustement de droite.</li>
+      <li><strong>Radon</strong> (<code>find_line_radon.m</code>) : filtre médian, bords de Canny, transformée de Radon ; l'angle de projection le plus fort donne l'orientation de la ligne.</li>
+      <li>Son (<code>findsound.m</code>) : les volumes gauche et droit valent cos&sup2; et sin&sup2; de (&minus;angle + 45&deg;), saturés au-delà de &plusmn;45&deg;, de somme 1, sur un signal carré de 100&nbsp;Hz comme dans le modèle Simulink. Le son est joué du côté vers lequel on dérive : il faut s'en éloigner.</li>
+      <li>Résultat terrain du système d'origine (rapport &sect;5.2, poster) : la ligne a été suivie correctement lors de 20 essais sur 20, avec un protocole non documenté.</li>
+    </ul>
+    <h3>Erreur d'angle du portage Python</h3>
+    <div class="scroll" id="metrics"><p class="small muted">Chargement…</p></div>
+    <p class="small muted" id="metrics-src"></p>
+  </section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const NAMES = { middle_edge: "Milieu des bords", quantization: "Quantification + régression", radon: "Radon" };
+  const frDate = (s) => { const t = new Date(s + "T00:00:00"); return isNaN(t) ? esc(s) : t.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }); };
+  const dec = (x, d) => Number(x).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  let method = "middle_edge";
+  let current = null;       // {kind: "example"|"file", name|blob, ref}
+  let last = null;          // last detection result
+  let examples = [];
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  // ---------------- audio (Web Audio API) ----------------
+  let ctx = null, gL = null, gR = null, osc = null, playing = false;
+  function startAudio() {
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    osc = ctx.createOscillator(); osc.type = "square"; osc.frequency.value = 100;
+    const master = ctx.createGain(); master.gain.value = 0.15;
+    gL = ctx.createGain(); gR = ctx.createGain();
+    const merger = ctx.createChannelMerger(2);
+    osc.connect(gL); osc.connect(gR);
+    gL.connect(merger, 0, 0); gR.connect(merger, 0, 1);
+    merger.connect(master); master.connect(ctx.destination);
+    applyGains(); osc.start(); ctx.resume(); playing = true;
+  }
+  function stopAudio() { if (osc) { osc.stop(); osc.disconnect(); osc = null; } playing = false; }
+  function gains() {
+    if (!last || !last.found) return [0, 0];
+    return $("invert").checked ? [last.right, last.left] : [last.left, last.right];
+  }
+  function applyGains() {
+    if (!gL) return;
+    const [l, r] = gains(), t = ctx.currentTime;
+    gL.gain.setTargetAtTime(l, t, 0.05); gR.gain.setTargetAtTime(r, t, 0.05);
+  }
+  $("play").addEventListener("click", () => {
+    if (playing) { stopAudio(); $("play").textContent = "Jouer le son de guidage"; $("play").setAttribute("aria-pressed", "false"); }
+    else { startAudio(); $("play").textContent = "Arrêter le son"; $("play").setAttribute("aria-pressed", "true"); }
+  });
+  $("invert").addEventListener("change", () => { renderBars(); applyGains(); });
+
+  // ---------------- detection ----------------
+  async function detect(extra = {}) {
+    if (!current) return;
+    $("error").textContent = "";
+    const fd = new FormData();
+    fd.append("method", method);
+    let url = "/api/detect";
+    if (current.kind === "example") { url = "/api/detect_example"; fd.append("name", current.name); }
+    else fd.append("file", current.blob, "image.jpg");
+    for (const [k, v] of Object.entries(extra)) fd.append(k, v);
+    try {
+      const r = await fetch(url, { method: "POST", body: fd });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : `Erreur du serveur (${r.status})`);
+      last = data; render(); applyGains();
+      return data;
+    } catch (e) { $("error").textContent = e.message; }
+  }
+
+  function renderBars() {
+    const [l, r] = gains();
+    $("fill-l").style.width = (l * 100) + "%"; $("fill-r").style.width = (r * 100) + "%";
+    $("val-l").textContent = last && last.found ? dec(l, 2) : "–";
+    $("val-r").textContent = last && last.found ? dec(r, 2) : "–";
+  }
+
+  function render() {
+    const d = last;
+    $("result-card").hidden = false;
+    let img = $("out-img");
+    if (!img) {
+      img = document.createElement("img"); img.id = "out-img";
+      img.alt = "Image avec la ligne détectée tracée en rouge et les points échantillonnés en vert";
+      $("out-img-box").appendChild(img);
+    }
+    img.src = d.image;
+    if (d.found) {
+      const a = d.angle_deg;
+      $("angle").innerHTML = `${a > 0 ? "+" : ""}${dec(a, 1)}&deg; <small>${Math.abs(a) < 2 ? "tout droit" : a > 0 ? "la ligne part vers la droite" : "la ligne part vers la gauche"}</small>`;
+      $("angle-help").textContent = "Angle entre la ligne et la direction de marche (positif = vers la droite).";
+    } else {
+      $("angle").innerHTML = `Aucune ligne <small>trouvée</small>`;
+      $("angle-help").textContent = d.message || "";
+    }
+    renderBars();
+    const rows = [["Méthode", NAMES[d.method]], ["Temps de calcul", `${dec(d.time_ms, 1)}\u00a0ms`], ["Points utilisés", d.n_samples || "–"]];
+    if (current && current.ref != null) rows.push(["Angle de référence", `${current.ref > 0 ? "+" : ""}${dec(current.ref, 1)}&deg; (image synthétique)`]);
+    if (d.line_color) rows.push(["Couleur de la ligne (k-means)", `<span class="swatch" style="background:rgb(${d.line_color.join(",")})"></span>rgb(${d.line_color.map(Math.round).join(", ")})`]);
+    if (d.threshold != null) rows.push(["Rayon de couleur", Number(d.threshold).toLocaleString("fr-FR")]);
+    if (d.color_updated === false) rows.push(["Recherche de couleur", "sautée (couleur réutilisée, comme la tâche B)"]);
+    if (d.lateral_offset_ratio != null) rows.push(["Décalage latéral à 9/10 de la hauteur", `${dec(d.lateral_offset_ratio * 100, 1)}\u00a0% de la largeur`]);
+    if (d.theta_peak != null) rows.push(["Pic de Radon", `&theta; = ${Number(d.theta_peak).toLocaleString("fr-FR")}&deg;`]);
+    $("stats").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  }
+
+  // ---------------- examples, upload, method ----------------
+  function renderExamples() {
+    const box = $("examples");
+    box.innerHTML = examples.map((e, i) =>
+      `<button type="button" class="ex" data-i="${i}" aria-pressed="false"><img src="/static/examples/${esc(e.file)}" alt="" loading="lazy"><span>${esc(e.title)}</span></button>`).join("");
+    box.querySelectorAll(".ex").forEach((b) => b.addEventListener("click", () => {
+      stopCam();
+      box.querySelectorAll(".ex").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+      const e = examples[+b.dataset.i];
+      current = { kind: "example", name: e.file, ref: e.reference_angle_deg };
+      detect();
+    }));
+  }
+  $("file").addEventListener("change", (ev) => {
+    const f = ev.target.files[0]; ev.target.value = "";
+    if (!f) return;
+    stopCam();
+    $("examples").querySelectorAll(".ex").forEach((x) => x.setAttribute("aria-pressed", "false"));
+    current = { kind: "file", blob: f, ref: null };
+    detect();
+  });
+  $("methods").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    $("methods").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", "false"));
+    b.setAttribute("aria-pressed", "true");
+    method = b.dataset.m; camColor = null;
+    if (!camTimer) detect();
+  }));
+
+  // ---------------- webcam: one frame per second ----------------
+  let stream = null, camTimer = null, camColor = null, camFrame = 0, busy = false;
+  async function startCam() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 640, height: 480 }, audio: false });
+    } catch (e) { $("error").textContent = "Caméra indisponible : " + e.message; return; }
+    const v = $("video"); v.srcObject = stream; await v.play();
+    $("cam").textContent = "Arrêter la webcam"; $("cam").setAttribute("aria-pressed", "true");
+    $("examples").querySelectorAll(".ex").forEach((x) => x.setAttribute("aria-pressed", "false"));
+    camFrame = 0; camColor = null;
+    camTimer = setInterval(grab, 1000); grab();
+  }
+  function stopCam() {
+    if (camTimer) clearInterval(camTimer);
+    camTimer = null;
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    $("cam").textContent = "Utiliser la webcam"; $("cam").setAttribute("aria-pressed", "false");
+  }
+  async function grab() {
+    if (busy) return;
+    const v = $("video");
+    if (!v.videoWidth) return;
+    const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext("2d").drawImage(v, 0, 0);
+    const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.85));
+    current = { kind: "file", blob, ref: null };
+    // Quantization: like the deployed system, the slow colour search (task A)
+    // runs only every 5 frames; the fast task B reuses its colour in between.
+    const extra = method === "quantization" && camColor && camFrame % 5 !== 0 ? camColor : {};
+    busy = true;
+    const d = await detect(extra);
+    busy = false; camFrame++;
+    if (d && d.line_color && d.color_updated) camColor = { color: d.line_color.join(","), threshold: d.threshold };
+  }
+  $("cam").addEventListener("click", () => (camTimer ? stopCam() : startCam()));
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) $("cam").hidden = true;
+
+  // ---------------- metrics ----------------
+  async function loadMetrics() {
+    try {
+      const m = await (await fetch("/api/metrics")).json();
+      const fmt = (x) => x == null ? "–" : dec(x, 2) + "&deg;";
+      const pct = (x) => x == null ? "–" : Math.round(x * 100) + "\u00a0%";
+      $("metrics").innerHTML = `<table class="metrics"><thead><tr><th>Méthode</th><th>Détectées</th><th>Erreur abs. moyenne</th><th>Droites</th><th>Courbes</th><th>Médiane</th><th>Temps / image</th></tr></thead><tbody>` +
+        Object.entries(m.methods).map(([k, r]) => `<tr><td>${NAMES[k] || esc(k)}</td><td>${r.all.n_detected}/${r.all.n_images} (${pct(r.all.detection_rate)})</td>
+          <td>${fmt(r.all.mae_deg)}</td><td>${fmt(r.straight.mae_deg)}</td><td>${fmt(r.curved.mae_deg)}</td><td>${fmt(r.all.median_ae_deg)}</td><td>${dec(r.mean_time_ms, 1)}\u00a0ms</td></tr>`).join("") + "</tbody></table>";
+      $("metrics-src").innerHTML = `${m.dataset.n_straight + m.dataset.n_curved} images <strong>synthétiques</strong> (${m.dataset.n_straight} lignes droites, ${m.dataset.n_curved} courbes) ; la référence est la meilleure droite ajustée sur la ligne centrale dessinée. ` +
+        `Les erreurs sont moyennées sur les images où une ligne a été trouvée. Aucune photo réelle avec un angle mesuré n'était disponible : ces chiffres ne disent rien de la précision sur le terrain.`;
+    } catch { $("metrics").innerHTML = `<p class="small muted">Métriques indisponibles.</p>`; }
+  }
+
+  (async () => {
+    try {
+      examples = await (await fetch("/api/examples")).json();
+      renderExamples();
+      const first = $("examples").querySelector(".ex");
+      if (first) first.click();
+    } catch { $("error").textContent = "Impossible de charger les exemples."; }
+    loadMetrics();
+  })();
+})();
+</script>
+</body>
+</html>
